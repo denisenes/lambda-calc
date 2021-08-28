@@ -1,0 +1,15 @@
+Inf . ITerm ::= CTerm ;
+Lam . ITerm ::= "lam" [Id] "." ITerm ;
+_   . ITerm ::= "(" ITerm ")" ;
+
+Ann . CTerm ::= ITerm "::" Type ;
+Var . CTerm ::= Id ;
+App . CTerm ::= CTerm ITerm ;
+_   . CTerm ::= "(" CTerm ")" ;
+
+TFree . Type ::= Id ;
+TFun  . Type ::= Type "->" Type ;
+_     . Type ::= "(" Type ")" ;
+
+token Id (letter (letter | digit | '_')*) ;
+terminator Id "";
