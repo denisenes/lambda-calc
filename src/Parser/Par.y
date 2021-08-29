@@ -27,15 +27,14 @@ L_Id { PT _ (T_Id $$) }
 
 Id    :: { Id} : L_Id { Id ($1)}
 
-ITerm :: { ITerm }
-ITerm : CTerm { Abs.Inf $1 }
-      | 'lam' ListId '.' ITerm { Abs.Lam $2 $4 }
-      | '(' ITerm ')' { $2 }
-CTerm :: { CTerm }
-CTerm : ITerm '::' Type { Abs.Ann $1 $3 }
-      | Id { Abs.Var $1 }
-      | CTerm ITerm { Abs.App $1 $2 }
+CTerm : ITerm { Abs.Inf $1 }
+      | 'lam' ListId '.' CTerm { Abs.Lam $2 $4 }
       | '(' CTerm ')' { $2 }
+ITerm :: { ITerm }
+ITerm : CTerm '::' Type { Abs.Ann $1 $3 }
+      | Id { Abs.Var $1 }
+      | ITerm CTerm { Abs.App $1 $2 }
+      | '(' ITerm ')' { $2 }
 Type :: { Type }
 Type : Id { Abs.TFree $1 }
      | Type '->' Type { Abs.TFun $1 $3 }

@@ -1,3 +1,2 @@
-(x y) :: Int
-
+lam x y .(x (lam z .(z y))) :: (a -> a)
 
