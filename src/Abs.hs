@@ -22,14 +22,21 @@ data Name
     | Quote Int
   deriving (Show,Eq, Ord, Read) 
 
-data Type = TFree Id
+data Type
+    = TFree Id
+    | TNFree Name
     | TFun Type Type
   deriving (Eq, Ord, Show, Read)
 
 data Value
     = VLam (Value -> Value)
     | VNeutral Neutral
+  deriving (Show)
 
 data Neutral
     = NFree Name
     | NApp Neutral Value
+  deriving (Show)
+
+instance Show (a -> b) where
+  show f = "Func "

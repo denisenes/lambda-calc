@@ -5,10 +5,13 @@
 {-# OPTIONS_GHC -w #-}
 module Parser.Lex where
 
+
+
 import qualified Data.Bits
 import Data.Word (Word8)
 import Data.Char (ord)
 }
+
 
 $l = [a-zA-Z\192 - \255] # [\215 \247]    -- isolatin1 letter FIXME
 $c = [A-Z\192-\221] # [\215]    -- capital isolatin1 letter FIXME
@@ -24,9 +27,13 @@ $u = [\0-\255]          -- universal: any character
 
 $white+ ;
 @rsyms { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
-$l ($l | $d | \_)* { tok (\p s -> PT p (eitherResIdent (T_Id . share) s)) }
+$l ($l | $d | \_)* | \* { tok (\p s -> PT p (eitherResIdent (T_Id . share) s)) }
 
 $l $i*   { tok (\p s -> PT p (eitherResIdent (TV . share) s)) }
+
+
+
+
 
 {
 
