@@ -2,6 +2,9 @@ module Abs where
 
 newtype Id = Id String deriving (Eq, Ord, Show, Read)
 
+data Metaterm = META_CTERM CTerm | META_CONTL CTX_List
+  deriving (Eq, Ord, Show, Read)
+
 data CTerm 
     = Inf ITerm
     | Lam [Id] CTerm          -- before de Bruijn indexing
@@ -40,3 +43,9 @@ data Neutral
 
 instance Show (a -> b) where
   show f = "Func "
+
+data CTX_List = ContL [CTX_Ann]
+  deriving (Eq, Ord, Show, Read)
+
+data CTX_Ann = CTX_Kind Id | CTX_Type Id Type
+  deriving (Eq, Ord, Show, Read)

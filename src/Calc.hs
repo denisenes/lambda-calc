@@ -13,19 +13,17 @@ import Parser.ErrM
 import Abs
 
 -- ============IO==============
+-- TODO: repair file reading
 
 type ParseFun a = [Token] -> Err a
 myLLexer = myLexer
 
-runFile :: ParseFun CTerm -> FilePath -> IO ()
-runFile p f = putStrLn f >> readFile f >>= run p
-
-run :: ParseFun CTerm -> String -> IO ()
-run p s = let ts = myLLexer s in case p ts of
+run :: Context -> ParseFun CTerm -> String -> IO Context
+run ctx p s = let ts = myLLexer s in case p ts of
     Bad s -> do
         putStrLn s
         exitFailure
-    Ok    tree -> do
+    Ok  tree -> do
         let (Inf new_tree) = prepare tree
         showTree tree
         showTree new_tree
@@ -37,8 +35,10 @@ run p s = let ts = myLLexer s in case p ts of
         let value = eval new_tree
         putStrLn "\nValue:"
         putStrLn $ show value
-        exitSuccess
+        return ctx
 
+updateContext:: Context -> [CTX_Ann] -> IO Context
+updateContext ctx anns = return ctx
 
 showTree :: (Show a) => a -> IO ()
 showTree tree = do
@@ -48,10 +48,23 @@ main :: IO ()
 main = do
     args <- getArgs
     case args of
-        [] -> hGetContents stdin >>= run pCTerm
-        fs -> mapM_ (runFile pCTerm) fs
+        [] -> io_loop [] --hGetContents stdin >>= run pCTerm
+        --fs -> mapM_ (runFile pCTerm) fs
+
+io_loop:: Context -> IO ()
+io_loop ctx = do
+    putStr ">> "
+    hFlush stdout
+    in_str <- getLine
+    case in_str of
+        "by" -> putStrLn "Proko"
+        "exit" -> exitSuccess
+        _ -> do
+            new_ctx <- run ctx pCTerm in_str
+            io_loop new_ctx
 
 -- =================TO=DE=BRUIJN=INDICES===============
+
 prepare:: CTerm -> CTerm
 prepare term = toIndices_CT emptyStack term
 
@@ -91,8 +104,6 @@ typeToName:: Type -> Type
 typeToName (TFree (Id name)) = (TNFree (Global name))
 typeToName (TFun type_ type') = (TFun (typeToName type_) (typeToName type'))
 
-
-
 -- =================EVALUATION=================
 
 -- creates the value corresponding to a free variable
@@ -122,6 +133,10 @@ c_eval (Lam_ e) env = VLam (\x -> c_eval e (x : env))
 
 -- =================TYPECHECKER=================
 
+debug_env = [(Global "y",HasType (TNFree $ Global "a")),
+             (Global "z",HasType (TNFree $ Global "b")),
+             (Global "a",HasKind Star)]
+
 data Kind = Star
     deriving (Show)
 
@@ -136,12 +151,13 @@ type Result a = Either String a
 throwError:: String -> Result a
 throwError str = Left $ "Error: " ++ str
 
-typecheck term = infer_0 [] term
+typecheck term = infer_0 debug_env term
+--typecheck term = infer_0 [] term
 
 c_kind:: Context -> Type -> Kind -> Result ()
 c_kind ctx (TNFree x) Star = case lookup x ctx of
     Just (HasKind Star) -> return ()
-    Nothing -> throwError "unknown identifier"
+    Nothing -> throwError $ "unknown identifier " ++ show x 
 c_kind ctx (TFun k k') Star = do
     c_kind ctx k Star
     c_kind ctx k' Star
@@ -156,14 +172,14 @@ infer i ctx (Ann e t) = do
     return t
 infer i ctx (Free x) = case lookup x ctx of
     Just (HasType t) -> return t
-    Nothing                    -> throwError "unknown identifier"
+    Nothing                    -> throwError $ "unknown identifier " ++ show x
 infer i ctx (App e e') = do
     res <- infer i ctx e
     case res of
         TFun type_ type' -> do
             check i ctx e' type_
             return type'
-        _ -> throwError "illegal application"
+        _ -> throwError ("illegal application (" ++ (show e) ++ " " ++ (show e') ++ ")")
 
 check:: Int -> Context -> CTerm -> Type -> Result ()
 check i ctx (Inf e) type_ = do

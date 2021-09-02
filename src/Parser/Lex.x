@@ -4,9 +4,6 @@
 {-# OPTIONS -fno-warn-incomplete-patterns #-}
 {-# OPTIONS_GHC -w #-}
 module Parser.Lex where
-
-
-
 import qualified Data.Bits
 import Data.Word (Word8)
 import Data.Char (ord)
@@ -21,7 +18,7 @@ $i = [$l $d _ ']          -- identifier character
 $u = [\0-\255]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \. | \( | \) | \: \: | \- \>
+   \( | \) | \: \: | \* | \. | \- \>
 
 :-
 
@@ -99,7 +96,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "." 4 (b ")" 2 (b "(" 1 N N) (b "->" 3 N N)) (b "lam" 6 (b "::" 5 N N) N)
+resWords = b "." 5 (b "*" 3 (b ")" 2 (b "(" 1 N N) N) (b "->" 4 N N)) (b "assume" 7 (b "::" 6 N N) (b "lam" 8 N N))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 
