@@ -18,27 +18,19 @@ import Abs
 type ParseFun a = [Token] -> Err a
 myLLexer = myLexer
 
-run :: Context -> ParseFun CTerm -> String -> IO Context
-run ctx p s = let ts = myLLexer s in case p ts of
-    Bad s -> do
-        putStrLn s
-        exitFailure
-    Ok  tree -> do
-        let (Inf new_tree) = prepare tree
-        showTree tree
-        showTree new_tree
-        let res = typecheck new_tree
-        putStrLn "\nTypechecker result:"
-        case res of
-            (Left err) -> putStrLn err
-            (Right t) -> putStrLn (show t)
-        let value = eval new_tree
-        putStrLn "\nValue:"
-        putStrLn $ show value
-        return ctx
-
-updateContext:: Context -> [CTX_Ann] -> IO Context
-updateContext ctx anns = return ctx
+run :: Context -> CTerm -> IO ()
+run ctx tree = do
+    let (Inf new_tree) = prepare tree
+    showTree new_tree
+    let res = typecheck ctx new_tree
+    putStrLn "\nTypechecker result:"
+    case res of
+        (Left err) -> putStrLn err
+        (Right t) -> do
+            putStrLn (show t)
+            let value = eval new_tree
+            putStrLn "\nValue:"
+            putStrLn $ show value
 
 showTree :: (Show a) => a -> IO ()
 showTree tree = do
@@ -51,17 +43,27 @@ main = do
         [] -> io_loop [] --hGetContents stdin >>= run pCTerm
         --fs -> mapM_ (runFile pCTerm) fs
 
+-- Obama wrote this code
 io_loop:: Context -> IO ()
 io_loop ctx = do
     putStr ">> "
     hFlush stdout
     in_str <- getLine
     case in_str of
-        "by" -> putStrLn "Proko"
-        "exit" -> exitSuccess
+        ":by" -> putStrLn "Proko"
+        ":c" -> putStrLn $ show ctx
+        ":q" -> exitSuccess
         _ -> do
-            new_ctx <- run ctx pCTerm in_str
-            io_loop new_ctx
+            let ts = myLLexer in_str
+            let metaterm = pMetaterm ts
+            case metaterm of
+                Bad s -> do
+                    putStrLn s
+                    exitFailure
+                Ok (META_CTERM cterm) -> run ctx cterm
+                Ok (META_CONTL (ContL list)) -> let new_ctx = updateContext ctx list in
+                    io_loop new_ctx
+    io_loop ctx
 
 -- =================TO=DE=BRUIJN=INDICES===============
 
@@ -148,10 +150,19 @@ data Info
 type Context =[(Name,Info)]
 type Result a = Either String a
 
+updateContext:: Context -> [CTX_Ann] -> Context
+updateContext ctx [] = ctx
+updateContext ctx ((CTX_Kind (Id id)):anns) = let name = (Global id) in
+    updateContext ((name, HasKind Star):ctx) anns
+updateContext ctx ((CTX_Type (Id id) type_):anns) = let name = (Global id) in
+    updateContext ((name, HasType nt):ctx) anns
+    where
+    nt = typeToName type_
+
 throwError:: String -> Result a
 throwError str = Left $ "Error: " ++ str
 
-typecheck term = infer_0 debug_env term
+typecheck env term = infer_0 env term
 --typecheck term = infer_0 [] term
 
 c_kind:: Context -> Type -> Kind -> Result ()
@@ -193,8 +204,11 @@ subst_inf:: Int -> ITerm -> ITerm -> ITerm
 subst_inf i r (Ann e type_) = Ann (subst_check i r e) type_
 subst_inf i r (Bound j) = if i == j then r else Bound j
 subst_inf i r (Free y) = Free y
-subst_inf i r (App e e') = App (subst_inf i r e)  (subst_check i r e')
+subst_inf i r (App e e') = App (subst_inf i r e) (subst_check i r e')
 
-subst_check :: Int -> ITerm -> CTerm -> CTerm
+subst_check:: Int -> ITerm -> CTerm -> CTerm
 subst_check i r (Inf e) = Inf (subst_inf i r e)
 subst_check i r (Lam_ e) = Lam_ (subst_check (i + 1) r e)
+
+-- =================QUOTATION=================
+-- converts value to a term to print the value
