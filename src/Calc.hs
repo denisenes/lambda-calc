@@ -212,3 +212,18 @@ subst_check i r (Lam_ e) = Lam_ (subst_check (i + 1) r e)
 
 -- =================QUOTATION=================
 -- converts value to a term to print the value
+
+boundfree :: Int -> Name -> ITerm
+boundfree i (Quote k) = Bound (i - k - 1)
+boundfree i x = Free x
+
+quote_0:: Value -> CTerm
+quote_0 = quote 0
+
+quote:: Int -> Value -> CTerm
+quote i (VLam f) = Lam_ (quote (i + 1) (f (vfree (Quote i))))
+quote i (VNeutral n) = Inf (neutralQuote i n)
+
+neutralQuote:: Int -> Neutral -> ITerm
+neutralQuote i (NFree x) = boundfree i x
+neutralQuote i (NApp n v) = App (neutralQuote i n) (quote i v)
