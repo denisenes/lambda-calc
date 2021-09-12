@@ -21,16 +21,14 @@ myLLexer = myLexer
 run :: Context -> CTerm -> IO ()
 run ctx tree = do
     let (Inf new_tree) = prepare tree
-    showTree new_tree
+    --showTree new_tree
     let res = typecheck ctx new_tree
-    putStrLn "\nTypechecker result:"
     case res of
         (Left err) -> putStrLn err
         (Right t) -> do
-            putStrLn (show t)
             let value = eval new_tree
-            putStrLn "\nValue:"
-            putStrLn $ show value
+            let vterm = quote_0 value
+            putStrLn ("(" ++ (showCTerm 0 vterm) ++ ") :: " ++ (showType t))
 
 showTree :: (Show a) => a -> IO ()
 showTree tree = do
@@ -59,7 +57,6 @@ io_loop ctx = do
             case metaterm of
                 Bad s -> do
                     putStrLn s
-                    exitFailure
                 Ok (META_CTERM cterm) -> run ctx cterm
                 Ok (META_CONTL (ContL list)) -> let new_ctx = updateContext ctx list in
                     io_loop new_ctx
@@ -227,3 +224,19 @@ quote i (VNeutral n) = Inf (neutralQuote i n)
 neutralQuote:: Int -> Neutral -> ITerm
 neutralQuote i (NFree x) = boundfree i x
 neutralQuote i (NApp n v) = App (neutralQuote i n) (quote i v)
+
+-- ==================PRINTER==================
+
+showType :: Type -> String
+showType (TNFree (Global str)) = str
+showType (TFun t t') = "(" ++ (showType t) ++ " -> " ++ (showType t') ++ ")" 
+
+showCTerm :: Int -> CTerm -> String
+showCTerm i (Inf it) = showITerm i it
+showCTerm i (Lam_ ct) = "lam x" ++ (show i) ++ " . " ++ (showCTerm (i+1) ct)
+
+showITerm :: Int -> ITerm -> String
+showITerm i (Ann ct _) = showCTerm i ct
+showITerm i (Free (Global name)) = name
+showITerm i (Bound d) = "x"++show (i - d - 1)
+showITerm i (App term term') = "("++ (showITerm i term) ++" "++ (showCTerm i term') ++")"
